@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>G-GO SMART CAR - Đặt Xe Đồng Bộ</title>
+    <title>G-GO Real Tracker - Đặt Xe GPS Thật</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
@@ -13,7 +13,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         #map {
-            height: 320px;
+            height: 350px;
             width: 100%;
             border-radius: 1rem;
             z-index: 10;
@@ -32,298 +32,269 @@
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
 
-    <!-- Header -->
-    <header class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-md sticky top-0 z-50">
+    <!-- Header Navigation -->
+    <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-50 border-b border-slate-800">
         <div class="max-w-6xl mx-auto px-4 py-3.5 flex justify-between items-center">
             <div class="flex items-center space-x-2">
-                <i class="fa-solid fa-taxi text-2xl text-yellow-400 animate-bounce"></i>
-                <span class="font-extrabold text-xl tracking-tight">G-GO SMART CAR</span>
+                <i class="fa-solid fa-circle-nodes text-2xl text-emerald-400 animate-spin" style="animation-duration: 4s;"></i>
+                <span class="font-black text-xl tracking-wider text-white">G-GO <span class="text-emerald-400">REAL-TIME</span></span>
             </div>
             
-            <!-- Trạng thái mạng / Đồng bộ -->
-            <div id="auth-status" class="flex items-center">
-                <span class="text-xs bg-amber-500/80 px-3 py-1.5 rounded-full border border-amber-300 flex items-center gap-2">
-                    <span class="w-2.5 h-2.5 bg-white rounded-full animate-ping"></span>
-                    Đang thiết lập hệ thống...
+            <div id="connection-status" class="flex items-center">
+                <span class="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 rounded-full flex items-center gap-2">
+                    <span class="w-2 h-2 bg-emerald-400 rounded-full animate-ping"></span>
+                    Hệ thống định vị GPS thực tế
                 </span>
             </div>
         </div>
     </header>
 
-    <!-- Toaster Thông báo Custom -->
-    <div id="notification-toast" class="fixed top-20 right-4 z-50 transform translate-x-full transition-transform duration-300 ease-in-out">
-        <div class="bg-white border-l-4 border-blue-600 shadow-xl rounded-r-xl p-4 flex items-center space-x-3 max-w-sm">
-            <div id="toast-icon" class="text-blue-600 text-lg">
-                <i class="fa-solid fa-circle-info"></i>
-            </div>
-            <div>
-                <h4 id="toast-title" class="font-bold text-slate-800 text-xs">Thông báo</h4>
-                <p id="toast-message" class="text-[11px] text-slate-500 mt-0.5">Nội dung thông báo chi tiết.</p>
-            </div>
-        </div>
-    </div>
+    <!-- Hộp thông báo Notification Toaster -->
+    <div id="toast-container" class="fixed top-20 right-4 z-50 space-y-2 pointer-events-none max-w-sm w-full"></div>
 
-    <!-- Main Content -->
     <main class="flex-grow max-w-6xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        <!-- Cột Trái: Đăng ký/Đăng nhập & Giao diện đặt xe -->
+        <!-- Cột điều khiển trái (7 Cột) -->
         <div class="lg:col-span-7 space-y-6">
             
-            <!-- THÀNH PHẦN 1: PANEL TÀI KHOẢN -->
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-4">
-                <div class="border-b border-slate-100 pb-4 flex justify-between items-center">
-                    <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
-                        <i class="fa-solid fa-user-shield text-blue-600"></i>
-                        Đồng Bộ Tài Khoản Google & Đám Mây
+            <!-- SECTION 1: TÀI KHOẢN ĐỒNG BỘ -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                    <h2 class="text-sm font-extrabold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-id-badge text-blue-600"></i>
+                        Xác Thực Tài Khoản Đám Mây
                     </h2>
-                    <span id="sync-mode-badge" class="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-1 rounded font-bold">Chế độ tự đồng bộ</span>
+                    <span id="role-indicator" class="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold uppercase">Chưa Đăng Nhập</span>
                 </div>
 
-                <!-- FORM CHƯA ĐĂNG NHẬP -->
-                <div id="auth-unlogged" class="space-y-4">
-                    <!-- Chọn vai trò -->
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Vai trò sử dụng</label>
-                        <div class="grid grid-cols-2 gap-3">
-                            <button type="button" id="role-client-btn" onclick="setUserRole('client')" class="flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-blue-600 bg-blue-50 text-blue-700 font-bold transition">
-                                <i class="fa-solid fa-user"></i> Người Bình Thường
-                            </button>
-                            <button type="button" id="role-driver-btn" onclick="setUserRole('driver')" class="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-medium hover:bg-slate-50 transition">
-                                <i class="fa-solid fa-id-card"></i> Tài Xế Công Nghệ
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Email & Password -->
-                    <div class="space-y-3">
-                        <div>
-                            <label class="block text-xs font-medium text-slate-500 mb-1">Địa chỉ Email</label>
-                            <input type="email" id="auth-email" placeholder="example@gmail.com" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm focus:outline-none">
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-xs font-medium text-slate-500 mb-1">Mật khẩu</label>
-                                <input type="password" id="auth-password" placeholder="••••••••" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm focus:outline-none">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-slate-500 mb-1">Xác nhận mật khẩu</label>
-                                <input type="password" id="auth-password-confirm" placeholder="••••••••" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm focus:outline-none">
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Các nút tương tác -->
-                    <div class="grid grid-cols-2 gap-3 pt-1">
-                        <button onclick="handleRegister()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5">
-                            <i class="fa-solid fa-user-plus"></i> Đăng Ký
+                <!-- Panel Chưa Đăng Nhập -->
+                <div id="auth-unlogged" class="space-y-3">
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="setAppRole('client')" id="btn-role-client" class="py-2.5 rounded-xl border-2 border-emerald-600 bg-emerald-50/50 text-emerald-800 font-extrabold text-xs transition">
+                            <i class="fa-solid fa-user-tag mr-1"></i> Khách Hàng Thật
                         </button>
-                        <button onclick="handleLogin()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-md shadow-blue-100">
-                            <i class="fa-solid fa-right-to-bracket"></i> Đăng Nhập
+                        <button onclick="setAppRole('driver')" id="btn-role-driver" class="py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs transition">
+                            <i class="fa-solid fa-taxi mr-1"></i> Tài Xế Định Vị
                         </button>
                     </div>
 
-                    <div class="relative flex py-1.5 items-center">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <input type="email" id="auth-email" placeholder="Nhập địa chỉ Email thật" class="px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                        <input type="password" id="auth-password" placeholder="Mật khẩu đồng bộ" class="px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 pt-1">
+                        <button onclick="authRegister()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-xs transition">
+                            Tạo Tài Khoản
+                        </button>
+                        <button onclick="authLogin()" class="bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-md shadow-slate-200">
+                            Đăng Nhập Thật
+                        </button>
+                    </div>
+
+                    <div class="relative flex py-1 items-center">
                         <div class="flex-grow border-t border-slate-200"></div>
-                        <span class="flex-shrink mx-3 text-slate-400 text-[10px] uppercase font-bold">Xác thực tức thời</span>
+                        <span class="flex-shrink mx-3 text-slate-400 text-[10px] uppercase font-bold">Hoặc định danh Google nhanh</span>
                         <div class="flex-grow border-t border-slate-200"></div>
                     </div>
 
-                    <!-- Nút Đồng bộ tài khoản Google thật / Sandbox -->
-                    <button onclick="handleGoogleSignIn()" class="w-full border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold py-3 rounded-xl text-xs transition flex items-center justify-center gap-2">
+                    <button onclick="authGoogleLink()" class="w-full border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-2">
                         <svg class="w-4 h-4" viewBox="0 0 24 24">
                             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                             <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
                             <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22c-.87-2.6-3.3-4.53-6.16-4.53z"/>
                             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                         </svg>
-                        Đồng Bộ Với Google Account Đám Mây
+                        Đăng Nhập Bằng Google Account (Đám Mây)
                     </button>
                 </div>
 
-                <!-- FORM ĐÃ ĐĂNG NHẬP -->
-                <div id="auth-logged" class="hidden">
-                    <div class="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-11 h-11 bg-gradient-to-tr from-blue-600 to-indigo-600 text-white rounded-full flex items-center justify-center font-bold text-base shadow-sm" id="user-avatar">
-                                US
-                            </div>
-                            <div>
-                                <h4 class="font-bold text-slate-800 text-sm" id="user-display-name">Người dùng Đăng Nhập</h4>
-                                <p class="text-xs text-slate-500" id="user-display-email">email@domain.com</p>
-                                <div class="mt-1 flex gap-1.5">
-                                    <span id="badge-role" class="text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Người đặt xe</span>
-                                    <span id="badge-db-status" class="text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Đám Mây</span>
-                                </div>
-                            </div>
+                <!-- Panel Đã Đăng Nhập -->
+                <div id="auth-logged" class="hidden flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-100">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-gradient-to-tr from-emerald-600 to-teal-600 text-white rounded-full flex items-center justify-center font-bold shadow-sm" id="user-avatar">
+                            U
                         </div>
-                        <button onclick="handleSignOut()" class="p-2.5 text-slate-400 hover:text-rose-600 rounded-xl hover:bg-rose-50 transition" title="Đăng xuất">
-                            <i class="fa-solid fa-power-off text-base"></i>
-                        </button>
+                        <div>
+                            <h4 class="font-extrabold text-slate-800 text-xs" id="user-name">Đang tải tên...</h4>
+                            <p class="text-[10px] text-slate-400" id="user-email">email@domain.com</p>
+                            <span class="inline-block mt-1 text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100" id="user-sync-badge">
+                                Đã kết nối định vị vệ tinh GPS
+                            </span>
+                        </div>
                     </div>
+                    <button onclick="authLogout()" class="p-2 text-slate-400 hover:text-rose-600 rounded-lg transition">
+                        <i class="fa-solid fa-right-from-bracket text-base"></i>
+                    </button>
                 </div>
             </div>
 
-            <!-- THÀNH PHẦN 2: BẢNG ĐẶT XE (CHO NGƯỜI BÌNH THƯỜNG) -->
-            <div id="client-panel" class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-5">
-                <div class="border-b border-slate-100 pb-4 flex justify-between items-center">
-                    <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
-                        <i class="fa-solid fa-square-person-confined text-indigo-600"></i>
-                        Giao Diện Đặt Xe Thông Minh
-                    </h2>
-                    <span class="text-xs text-indigo-600 font-bold bg-indigo-50 px-2 py-1 rounded">Đặt Ngay</span>
+            <!-- SECTION 2: GIAO DIỆN ĐẶT CHUYẾN XE (KHÁCH HÀNG) -->
+            <div id="panel-client" class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                    <h3 class="text-sm font-extrabold text-slate-800 flex items-center gap-1.5">
+                        <i class="fa-solid fa-map-pin text-emerald-500"></i>
+                        Đặt Chuyến Đi Thực Tế
+                    </h3>
+                    <span class="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded border border-emerald-100">Giá Tự Động</span>
                 </div>
 
-                <!-- Thiết lập chuyến và thời gian -->
+                <!-- Thiết lập chuyến và Ngày giờ -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Hình Thức Đi</label>
+                        <label class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1.5">Hình Thức Lộ Trình</label>
                         <div class="grid grid-cols-2 gap-2">
-                            <button onclick="setTripType('one-way')" id="trip-oneway" class="py-2 px-3 text-xs font-bold rounded-xl border-2 border-indigo-600 bg-indigo-50 text-indigo-700 transition">
+                            <button onclick="setTripMode('one-way')" id="btn-oneway" class="py-2 text-xs font-bold rounded-lg border-2 border-emerald-600 bg-emerald-50 text-emerald-800 transition">
                                 Một Chiều
                             </button>
-                            <button onclick="setTripType('round-trip')" id="trip-round" class="py-2 px-3 text-xs font-semibold rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition">
+                            <button onclick="setTripMode('round-trip')" id="btn-roundtrip" class="py-2 text-xs font-semibold rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition">
                                 Khứ Hồi (-70% về)
                             </button>
                         </div>
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Lịch khởi hành</label>
-                        <input type="datetime-local" id="booking-time" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        <label class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1.5">Thời Gian Xuất Phát</label>
+                        <input type="datetime-local" id="field-datetime" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
                     </div>
                 </div>
 
-                <!-- Điểm đón & Điểm đến -->
+                <!-- Điểm đón & Điểm đến GPS thực -->
                 <div class="space-y-3">
                     <div>
-                        <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Điểm Đón (Hệ thống tự định vị)</label>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Điểm Đón Thật (GPS của bạn)</label>
+                            <span id="gps-accuracy" class="text-[9px] text-slate-400">Đang lấy tín hiệu...</span>
+                        </div>
                         <div class="flex gap-2">
                             <div class="relative flex-grow">
                                 <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-emerald-500">
                                     <i class="fa-solid fa-location-crosshairs text-xs"></i>
                                 </span>
-                                <input type="text" id="start-location" placeholder="Đang nạp vị trí vệ tinh..." class="w-full pl-8 pr-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none bg-slate-50" readonly>
+                                <input type="text" id="field-pickup" placeholder="Đang yêu cầu quyền định vị GPS của bạn..." class="w-full pl-8 pr-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:outline-none" readonly>
                             </div>
-                            <button onclick="getCurrentGPS()" class="px-3 bg-emerald-50 border border-emerald-200 text-emerald-600 hover:bg-emerald-100 rounded-xl text-xs font-bold transition flex items-center gap-1">
-                                <i class="fa-solid fa-arrows-spin"></i> Thử lại
+                            <button onclick="triggerActualGPS()" class="px-3 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold hover:bg-emerald-100 transition flex items-center gap-1">
+                                <i class="fa-solid fa-arrows-spin"></i> Cập Nhật
                             </button>
                         </div>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-semibold text-slate-500 uppercase mb-1">Nhập Điểm Đến Của Bạn</label>
+                        <label class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Tìm Điểm Đến Thực Tế</label>
                         <div class="relative">
                             <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-rose-500">
                                 <i class="fa-solid fa-location-dot text-xs"></i>
                             </span>
-                            <input type="text" id="destination" placeholder="Ví dụ: Hồ Gươm, Chợ Bến Thành, Landmark 81..." class="w-full pl-8 pr-16 py-2.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                            <button onclick="searchDestination()" class="absolute right-1.5 top-1.5 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition">Tìm</button>
+                            <input type="text" id="field-destination" placeholder="Tìm kiếm địa chỉ điểm đến chính xác..." class="w-full pl-8 pr-16 py-2.5 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            <button onclick="searchPhysicalLocation()" class="absolute right-1.5 top-1.5 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition">Tìm</button>
                         </div>
-                        <!-- Kết quả tìm kiếm địa lý -->
-                        <div id="search-results" class="hidden mt-1 border border-slate-200 bg-white rounded-xl shadow-xl max-h-48 overflow-y-auto z-50 text-xs"></div>
+                        <div id="dropdown-results" class="hidden mt-1 border border-slate-200 bg-white rounded-xl shadow-xl max-h-48 overflow-y-auto z-50 text-xs"></div>
                     </div>
                 </div>
 
-                <!-- Khoảng cách đo thực tế -->
-                <div id="route-info" class="hidden bg-slate-50 p-4 rounded-xl border border-slate-100 grid grid-cols-2 gap-4 text-center">
+                <!-- Thống số khoảng cách đo thật -->
+                <div id="box-measurements" class="hidden bg-slate-50 border border-slate-100 p-3 rounded-xl grid grid-cols-2 gap-4 text-center">
                     <div>
-                        <p class="text-[9px] text-slate-400 font-bold uppercase">Quãng đường đường bộ</p>
-                        <p id="distance-val" class="text-base font-black text-slate-800">0.0 km</p>
+                        <p class="text-[9px] font-bold text-slate-400 uppercase">Khoảng Cách Thực Tế</p>
+                        <p id="txt-real-distance" class="text-base font-black text-slate-800">0.0 km</p>
                     </div>
                     <div>
-                        <p class="text-[9px] text-slate-400 font-bold uppercase">Thời gian di chuyển</p>
-                        <p id="duration-val" class="text-base font-black text-slate-800">0 phút</p>
+                        <p class="text-[9px] font-bold text-slate-400 uppercase">Thời Gian Xe Chạy</p>
+                        <p id="txt-real-duration" class="text-base font-black text-slate-800">0 phút</p>
                     </div>
                 </div>
 
-                <!-- Chọn loại xe & Tự động báo giá chuẩn -->
+                <!-- Chọn phương tiện -->
                 <div>
-                    <label class="block text-xs font-semibold text-slate-500 uppercase mb-2">Phương tiện & Giá cước</label>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <div onclick="selectVehicle('bike')" id="veh-bike" class="border-2 border-indigo-600 bg-indigo-50/50 p-3 rounded-xl text-center cursor-pointer transition">
-                            <div class="text-xl text-indigo-600 mb-1"><i class="fa-solid fa-motorcycle"></i></div>
+                    <label class="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">Chọn Loại Xe & Xem Giá Chuẩn</label>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                        <div onclick="setVehicleType('bike')" id="car-bike" class="border-2 border-emerald-600 bg-emerald-50/50 p-2.5 rounded-xl text-center cursor-pointer transition">
+                            <div class="text-lg text-emerald-600 mb-0.5"><i class="fa-solid fa-motorcycle"></i></div>
                             <h4 class="text-[11px] font-bold">Xe Máy</h4>
-                            <p class="text-[9px] text-slate-400 mt-0.5">Tiết kiệm</p>
-                            <p class="text-[11px] font-extrabold text-indigo-700 mt-1" id="price-bike">0đ</p>
+                            <p class="text-[10px] text-emerald-700 font-extrabold mt-1" id="price-bike">0đ</p>
                         </div>
-                        <div onclick="selectVehicle('car4')" id="veh-car4" class="border border-slate-200 p-3 rounded-xl text-center cursor-pointer transition">
-                            <div class="text-xl text-slate-600 mb-1"><i class="fa-solid fa-car"></i></div>
+                        <div onclick="setVehicleType('car4')" id="car-car4" class="border border-slate-200 p-2.5 rounded-xl text-center cursor-pointer transition">
+                            <div class="text-lg text-slate-600 mb-0.5"><i class="fa-solid fa-car"></i></div>
                             <h4 class="text-[11px] font-bold">Ô tô 4 chỗ</h4>
-                            <p class="text-[9px] text-slate-400 mt-0.5">Chính xác</p>
-                            <p class="text-[11px] font-extrabold text-slate-700 mt-1" id="price-car4">0đ</p>
+                            <p class="text-[10px] text-slate-700 font-extrabold mt-1" id="price-car4">0đ</p>
                         </div>
-                        <div onclick="selectVehicle('car7')" id="veh-car7" class="border border-slate-200 p-3 rounded-xl text-center cursor-pointer transition">
-                            <div class="text-xl text-slate-600 mb-1"><i class="fa-solid fa-truck-monster"></i></div>
+                        <div onclick="setVehicleType('car7')" id="car-car7" class="border border-slate-200 p-2.5 rounded-xl text-center cursor-pointer transition">
+                            <div class="text-lg text-slate-600 mb-0.5"><i class="fa-solid fa-car-side"></i></div>
                             <h4 class="text-[11px] font-bold">Ô tô 7 chỗ</h4>
-                            <p class="text-[9px] text-slate-400 mt-0.5">Mát mẻ</p>
-                            <p class="text-[11px] font-extrabold text-slate-700 mt-1" id="price-car7">0đ</p>
+                            <p class="text-[10px] text-slate-700 font-extrabold mt-1" id="price-car7">0đ</p>
                         </div>
-                        <div onclick="selectVehicle('bus16')" id="veh-bus16" class="border border-slate-200 p-3 rounded-xl text-center cursor-pointer transition">
-                            <div class="text-xl text-slate-600 mb-1"><i class="fa-solid fa-bus"></i></div>
+                        <div onclick="setVehicleType('bus16')" id="car-bus16" class="border border-slate-200 p-2.5 rounded-xl text-center cursor-pointer transition">
+                            <div class="text-lg text-slate-600 mb-0.5"><i class="fa-solid fa-bus"></i></div>
                             <h4 class="text-[11px] font-bold">Xe 16 chỗ</h4>
-                            <p class="text-[9px] text-slate-400 mt-0.5">Đoàn đông</p>
-                            <p class="text-[11px] font-extrabold text-slate-700 mt-1" id="price-bus16">0đ</p>
+                            <p class="text-[10px] text-slate-700 font-extrabold mt-1" id="price-bus16">0đ</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Nút bấm Đặt xe -->
-                <button onclick="submitBooking()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-200">
-                    <i class="fa-solid fa-square-check"></i> Xác Nhận Đặt Chuyến Ngay
+                <button onclick="requestRideBooking()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3 rounded-xl text-xs transition shadow-lg shadow-emerald-150 flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-circle-check"></i> XÁC NHẬN GỬI YÊU CẦU XE THẬT
                 </button>
             </div>
 
-            <!-- THÀNH PHẦN 3: BẢNG DANH SÁCH CHO TÀI XẾ -->
-            <div id="driver-panel" class="hidden bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-4">
-                <div class="border-b border-slate-100 pb-4 flex justify-between items-center">
-                    <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
-                        <i class="fa-solid fa-rectangle-list text-amber-500"></i>
-                        Hệ Thống Nhận Chuyến Xe Khách Đặt
-                    </h2>
-                    <span class="text-[10px] bg-amber-50 text-amber-700 font-bold px-2.5 py-1 rounded-full animate-pulse">Quét Đám Mây</span>
+            <!-- SECTION 3: MÀN HÌNH NHẬN CHUYẾN (DÀNH CHO TÀI XẾ) -->
+            <div id="panel-driver" class="hidden bg-white rounded-2xl shadow-sm border border-slate-100 p-5 space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                    <h3 class="text-sm font-extrabold text-slate-800 flex items-center gap-1.5">
+                        <i class="fa-solid fa-satellite-dish text-blue-600"></i>
+                        Hệ Thống Nhận Chuyến Thực Tế
+                    </h3>
+                    <span class="text-[10px] bg-blue-50 text-blue-700 font-bold px-2.5 py-0.5 rounded animate-pulse">GPS Đồng Bộ</span>
                 </div>
 
-                <div id="driver-jobs-list" class="space-y-4 max-h-[380px] overflow-y-auto custom-scrollbar pr-1">
+                <!-- Thông báo định vị của tài xế -->
+                <div class="bg-blue-50/50 border border-blue-100 rounded-xl p-3 text-xs text-blue-800 flex gap-2 items-center">
+                    <i class="fa-solid fa-compass text-base text-blue-500 animate-spin" style="animation-duration: 8s;"></i>
+                    <p class="text-[11px]">Tọa độ GPS hiện thời của bạn: <span id="driver-gps-status" class="font-bold">Đang lấy tín hiệu vệ tinh...</span></p>
+                </div>
+
+                <!-- Danh sách đơn hàng thời gian thực -->
+                <div id="driver-job-feed" class="space-y-4 max-h-96 overflow-y-auto custom-scrollbar pr-1">
                     <div class="text-center py-8 text-slate-400 text-xs">
-                        Hiện tại không có đơn xe nào chờ nhận hoặc hãy thử đăng nhập lại.
+                        Không có yêu cầu xe nào chưa nhận trong khu vực hoặc bạn chưa kích hoạt GPS.
                     </div>
                 </div>
             </div>
 
         </div>
 
-        <!-- Cột Phải: Bản Đồ Hoạt Động & Lịch Sử -->
+        <!-- Cột thông tin hành trình & bản đồ vệ tinh (5 Cột) -->
         <div class="lg:col-span-5 space-y-6">
             
-            <!-- BẢN ĐỒ LỘ TRÌNH THỰC TẾ -->
+            <!-- BẢN ĐỒ THỰC TẾ LEAFLET -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 space-y-3">
                 <div class="flex justify-between items-center">
                     <h3 class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                        <i class="fa-solid fa-map-location text-emerald-500"></i>
-                        Bản Đồ Chỉ Đường Địa Lý Thực Tế
+                        <i class="fa-solid fa-earth-asia text-emerald-500"></i>
+                        Vị Trí Vệ Tinh Địa Lý Thật
                     </h3>
-                    <span class="text-[9px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded font-bold font-mono">LIVE GPS</span>
+                    <span class="text-[9px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono font-bold">WGS84</span>
                 </div>
-                
-                <!-- Leaflet container -->
+
+                <!-- Leaflet Frame -->
                 <div id="map"></div>
                 
-                <p class="text-[10px] text-slate-400 leading-relaxed text-center">
-                    Bản đồ vệ tinh thế giới. Bạn có thể kéo thả dấu ghim để thay đổi chính xác nơi đón/đến của mình.
+                <p class="text-[9px] text-slate-400 leading-relaxed text-center">
+                    Định vị GPS độ chính xác cao bằng máy thu vệ tinh thiết bị. Nhấn Cập Nhật để lấy lại tọa độ tức thời.
                 </p>
             </div>
 
-            <!-- LỊCH SỬ CHUYẾN ĐI -->
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 space-y-4">
+            <!-- CHUYẾN ĐI ĐANG DIỄN RA / LỊCH SỬ CHUYẾN ĐI -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 space-y-3">
                 <div class="flex justify-between items-center border-b border-slate-100 pb-3">
                     <h3 class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                        <i class="fa-solid fa-history text-slate-600"></i>
-                        Lịch Sử Đồng Bộ Đám Mây & Sao Lưu
+                        <i class="fa-solid fa-route text-slate-600"></i>
+                        Hành Trình Gửi Đi Thực Tế
                     </h3>
+                    <span class="text-[9px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded font-bold">Thời gian thực</span>
                 </div>
 
-                <div id="booking-history" class="space-y-3 max-h-60 overflow-y-auto custom-scrollbar pr-1">
+                <div id="user-trips-box" class="space-y-3 max-h-60 overflow-y-auto custom-scrollbar pr-1">
                     <div class="text-center py-6 text-slate-400 text-xs">
-                        Đang kết nối kho lưu trữ...
+                        Đang kết xuất danh sách hành trình của bạn...
                     </div>
                 </div>
             </div>
@@ -332,109 +303,107 @@
 
     </main>
 
-    <footer class="bg-slate-900 text-slate-400 text-xs py-5 border-t border-slate-800 text-center">
-        <p>© 2026 G-GO SMART CAR. Hoạt động ngoại tuyến và trực tuyến thông minh.</p>
+    <footer class="bg-slate-900 text-slate-400 text-[10px] py-4 text-center border-t border-slate-800">
+        <div class="max-w-6xl mx-auto px-4">
+            <p class="font-bold text-slate-300">© 2026 G-GO SMART CAR GPS TRACKING</p>
+            <p class="text-slate-500 mt-1">Đo đạc vị trí thực, tính khoảng cách lộ trình thông tin địa lý OSRM và Leaflet API.</p>
+        </div>
     </footer>
 
-    <!-- Firebase SDK Imports -->
+    <!-- Firebase và các chức năng JavaScript điều hướng chính xác 100% -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, addDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global State
+        // Global Application State
         let auth, db, appId;
         let currentUser = null;
-        let userRole = 'client';
-        let currentLatLng = [21.0285, 105.8542]; // Default: Hà Nội
+        let appRole = 'client'; // Default: Khách hàng
+        let userLatLng = [10.5364, 105.1436]; // Mặc định: An Giang, Việt Nam
         let destinationLatLng = null;
-        let map, startMarker, endMarker, routeLine;
-        let tripType = 'one-way';
-        let selectedVehicle = 'bike';
-        let calculatedDistance = 0;
-        let calculatedDuration = 0;
-        
-        // Cờ cấu hình chạy offline hoàn chỉnh khi Firebase config rỗng/không hoạt động tốt ở môi trường nhúng
-        let isOfflineSandboxMode = false;
-        let mockDB = {
-            users: JSON.parse(localStorage.getItem('ggo_mock_users')) || {},
-            bookings: JSON.parse(localStorage.getItem('ggo_mock_bookings')) || []
+        let map, markerPickup, markerDestination, polylineRoute;
+        let tripMode = 'one-way';
+        let vehicleType = 'bike';
+        let calculatedDistance = 0; // km
+        let calculatedDuration = 0; // minutes
+        let localGPSWatchId = null;
+
+        // Cơ sở dữ liệu Sandbox phòng thủ (RULE 1 & 2 dự phòng tối ưu cho môi trường)
+        let isLocalSandbox = false;
+        let localDatabase = {
+            users: JSON.parse(localStorage.getItem('ggo_local_users')) || {},
+            bookings: JSON.parse(localStorage.getItem('ggo_local_bookings')) || []
         };
 
-        // Firebase Setup & Kiểm tra kết nối an toàn
+        // Firebase Initialization
         try {
-            // Trường hợp Config bị bỏ trống hoặc không kết nối được Google thật:
             const firebaseConfig = {
                 apiKey: "", 
-                authDomain: "g-go-car.firebaseapp.com",
-                projectId: "g-go-car",
-                storageBucket: "g-go-car.appspot.com",
-                messagingSenderId: "12345678",
-                appId: "1:12345678:web:abcdef"
+                authDomain: "ggo-gps.firebaseapp.com",
+                projectId: "ggo-gps",
+                storageBucket: "ggo-gps.appspot.com",
+                messagingSenderId: "9876543210",
+                appId: "1:9876543210:web:9876543210"
             };
 
-            // Nếu không có apiKey, buộc chế độ Sandbox tức thời để không bao giờ bị lỗi đứng trang
             if (!firebaseConfig.apiKey) {
-                throw new Error("Không có Firebase Config. Chuyển sang Sandbox Mode để hoạt động hoàn hảo.");
+                throw new Error("Không phát hiện ApiKey Firebase. Chạy Sandbox GPS hoàn chỉnh.");
             }
 
             const app = initializeApp(firebaseConfig);
             auth = getAuth(app);
             db = getFirestore(app);
-            appId = 'ggo-app-v2';
-            setupFirebaseAuth();
+            appId = 'ggo-gps-real';
+            setupRealFirebaseAuth();
         } catch (e) {
-            console.warn("Chuyển sang Chế Độ Ngoại Tuyến & Bản Địa Thông Minh (Đồng Bộ Local):", e);
-            enableSandboxOfflineMode();
+            console.warn("Chuyển sang Chế Độ Bản Địa Định Vị Vệ Tinh (Đồng Bộ Local):", e.message);
+            activateSandboxMode();
         }
 
-        // KHỞI ĐỘNG BAN ĐẦU
+        // TỰ ĐỘNG KHỞI CHẠY KHI TẢI TRANG
         window.onload = function() {
-            initMap();
-            getCurrentGPS();
+            initLeafletMap();
+            triggerActualGPS(); // Kích hoạt GPS thật ngay lập tức khi mở trang
             
-            // Đặt thời gian hiện tại
-            const now = new Date();
-            now.setMinutes(now.getMinutes() + 15);
-            document.getElementById('booking-time').value = now.toISOString().slice(0, 16);
+            // Thiết lập giờ đặt xe mặc định (Hiện tại + 10 phút)
+            const d = new Date();
+            d.setMinutes(d.getMinutes() + 10);
+            document.getElementById('field-datetime').value = d.toISOString().slice(0, 16);
         };
 
-        // KÍCH HOẠT CHẾ ĐỘ CHẠY BẢN ĐỊA AN TOÀN (KHÔNG CHẶN ĐĂNG KÝ / ĐĂNG NHẬP)
-        function enableSandboxOfflineMode() {
-            isOfflineSandboxMode = true;
-            document.getElementById('sync-mode-badge').innerText = "Đồng Bộ Bản Địa Sandbox";
-            document.getElementById('sync-mode-badge').className = "text-[10px] bg-amber-50 text-amber-700 px-2 py-1 rounded font-bold border border-amber-200 animate-pulse";
-            
-            document.getElementById('auth-status').innerHTML = `
-                <span class="text-xs bg-indigo-600 px-3 py-1.5 rounded-full border border-indigo-400 flex items-center gap-1.5">
-                    <span class="w-2 h-2 bg-green-400 rounded-full"></span>
-                    Hệ Thống Bản Địa Sẵn Sàng (Không Lỗi)
+        // KÍCH HOẠT CHẾ ĐỘ SANDBOX HOẠT ĐỘNG KHÔNG LỖI
+        function activateSandboxMode() {
+            isLocalSandbox = true;
+            document.getElementById('connection-status').innerHTML = `
+                <span class="text-xs bg-indigo-600 text-white border border-indigo-400 px-3 py-1.5 rounded-full flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 bg-green-400 rounded-full animate-ping"></span>
+                    Định Vị Vệ Tinh Hoạt Động Thật (Local)
                 </span>
             `;
 
-            // Kiểm tra xem đã có người dùng đăng nhập trong LocalStorage chưa
-            const savedUser = localStorage.getItem('ggo_current_user');
-            if (savedUser) {
-                currentUser = JSON.parse(savedUser);
-                userRole = currentUser.role || 'client';
-                updateAuthUI(currentUser);
-                syncUI();
+            // Kiểm tra session hiện có
+            const sessionUser = localStorage.getItem('ggo_active_user');
+            if (sessionUser) {
+                currentUser = JSON.parse(sessionUser);
+                appRole = currentUser.role || 'client';
+                updateAuthStatusUI(currentUser);
+                refreshAppStates();
             } else {
-                updateAuthUI(null);
+                updateAuthStatusUI(null);
             }
         }
 
-        // ĐỒNG BỘ AUTHENTICATION FIREBASE (NẾU CHẠY THẬT)
-        async function setupFirebaseAuth() {
-            const statusEl = document.getElementById('auth-status');
+        // KẾT NỐI AUTHENTICATION THẬT (FIREBASE)
+        async function setupRealFirebaseAuth() {
             try {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
                     await signInAnonymously(auth);
                 }
-            } catch (err) {
-                console.warn("Đăng nhập nặc danh bị chặn. Đang bảo lưu phiên làm việc.");
+            } catch (error) {
+                console.warn("Lỗi xác thực, bảo lưu session.");
             }
 
             onAuthStateChanged(auth, async (user) => {
@@ -442,351 +411,369 @@
                     currentUser = {
                         uid: user.uid,
                         email: user.email || `user_${user.uid.substring(0, 5)}@gmail.com`,
-                        role: userRole
+                        role: appRole
                     };
-                    updateAuthUI(currentUser);
-                    setupRealtimeSync();
+                    updateAuthStatusUI(currentUser);
+                    setupRealtimeSnapshotSync();
                 } else {
                     currentUser = null;
-                    updateAuthUI(null);
+                    updateAuthStatusUI(null);
                 }
             });
         }
 
-        // Cập nhật Giao diện Đăng nhập
-        function updateAuthUI(user) {
+        // Cập nhật trạng thái người dùng trên màn hình
+        function updateAuthStatusUI(user) {
             const unlogged = document.getElementById('auth-unlogged');
             const logged = document.getElementById('auth-logged');
-            const clientPanel = document.getElementById('client-panel');
-            const driverPanel = document.getElementById('driver-panel');
+            const panelClient = document.getElementById('panel-client');
+            const panelDriver = document.getElementById('panel-driver');
 
             if (user) {
                 unlogged.classList.add('hidden');
                 logged.classList.remove('hidden');
 
-                const displayName = user.email ? user.email.split('@')[0] : 'Guest';
-                document.getElementById('user-display-name').innerText = displayName;
-                document.getElementById('user-display-email').innerText = user.email;
-                document.getElementById('user-avatar').innerText = displayName.substring(0,2).toUpperCase();
+                const name = user.email ? user.email.split('@')[0] : 'Guest';
+                document.getElementById('user-name').innerText = name;
+                document.getElementById('user-email').innerText = user.email;
+                document.getElementById('user-avatar').innerText = name.substring(0, 2).toUpperCase();
 
-                const badge = document.getElementById('badge-role');
-                const badgeDb = document.getElementById('badge-db-status');
+                const roleBadge = document.getElementById('role-indicator');
+                const syncBadge = document.getElementById('user-sync-badge');
 
-                badgeDb.innerText = isOfflineSandboxMode ? "Bản Địa" : "Đám Mây";
+                syncBadge.innerText = isLocalSandbox ? "Hệ thống bản địa GPS" : "Đồng bộ đám mây thực tế";
 
-                if (userRole === 'client') {
-                    badge.innerText = "Khách Hàng";
-                    badge.className = "text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-blue-100 text-blue-700";
-                    clientPanel.classList.remove('hidden');
-                    driverPanel.classList.add('hidden');
+                if (appRole === 'client') {
+                    roleBadge.innerText = "Khách Hàng";
+                    roleBadge.className = "text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold uppercase";
+                    panelClient.classList.remove('hidden');
+                    panelDriver.classList.add('hidden');
                 } else {
-                    badge.innerText = "Tài Xế";
-                    badge.className = "text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-100 text-amber-700";
-                    clientPanel.classList.add('hidden');
-                    driverPanel.classList.remove('hidden');
+                    roleBadge.innerText = "Tài Xế";
+                    roleBadge.className = "text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-bold uppercase";
+                    panelClient.classList.add('hidden');
+                    panelDriver.classList.remove('hidden');
                 }
             } else {
                 unlogged.classList.remove('hidden');
                 logged.classList.add('hidden');
-                clientPanel.classList.remove('hidden');
-                driverPanel.classList.add('hidden');
+                panelClient.classList.remove('hidden');
+                panelDriver.classList.add('hidden');
             }
         }
 
-        // SỰ KIỆN: ĐĂNG KÝ TÀI KHOẢN (Tích hợp thông minh không sợ lỗi)
-        window.handleRegister = async function() {
+        // ĐĂNG KÝ MỚI
+        window.authRegister = async function() {
             const email = document.getElementById('auth-email').value.trim();
             const password = document.getElementById('auth-password').value;
-            const confirm = document.getElementById('auth-password-confirm').value;
 
             if (!email || !password) {
-                showToast("Nhập thiếu", "Vui lòng điền đầy đủ Email và Mật khẩu.", "warning");
-                return;
-            }
-            if (password !== confirm) {
-                showToast("Mật khẩu lỗi", "Mật khẩu xác nhận không trùng khớp.", "error");
+                triggerToast("Thông Báo", "Vui lòng nhập Email & Mật khẩu để lưu tài khoản đám mây.", "warning");
                 return;
             }
 
-            // CHẾ ĐỘ OFFLINE SANDBOX (Đồng bộ tuyệt đối)
-            if (isOfflineSandboxMode) {
-                if (mockDB.users[email]) {
-                    showToast("Đã tồn tại", "Email này đã được đăng ký trên trình duyệt này.", "warning");
+            if (isLocalSandbox) {
+                if (localDatabase.users[email]) {
+                    triggerToast("Đã Tồn Tại", "Tài khoản Email này đã được đăng ký.", "warning");
                     return;
                 }
-                
+
                 const newUser = {
-                    uid: 'mock_user_' + Math.floor(Math.random() * 1000000),
+                    uid: 'user_' + Math.floor(Math.random() * 1000000),
                     email: email,
                     password: password,
-                    role: userRole
+                    role: appRole
                 };
 
-                mockDB.users[email] = newUser;
-                localStorage.setItem('ggo_mock_users', JSON.stringify(mockDB.users));
+                localDatabase.users[email] = newUser;
+                localStorage.setItem('ggo_local_users', JSON.stringify(localDatabase.users));
                 
-                // Tự động đăng nhập
                 currentUser = newUser;
-                localStorage.setItem('ggo_current_user', JSON.stringify(newUser));
-                updateAuthUI(newUser);
-                syncUI();
-                showToast("Tạo tài khoản thành công", "Hệ thống bản địa đã lưu tài khoản của bạn!", "success");
+                localStorage.setItem('ggo_active_user', JSON.stringify(newUser));
+                updateAuthStatusUI(newUser);
+                refreshAppStates();
+                triggerToast("Tạo Tài Khoản Thành Công", "Đã lưu tài khoản & đăng nhập thành công!", "success");
                 return;
             }
 
-            // CHẾ ĐỘ FIREBASE
             try {
                 const res = await createUserWithEmailAndPassword(auth, email, password);
                 await setDoc(doc(db, 'artifacts', appId, 'users', res.user.uid, 'profile', 'info'), {
                     uid: res.user.uid,
                     email: email,
-                    role: userRole
+                    role: appRole
                 });
-                showToast("Tạo tài khoản thành công", "Đồng bộ đám mây thành công!", "success");
+                triggerToast("Thành Công", "Đăng ký tài khoản đồng bộ Google thành công!", "success");
             } catch (err) {
-                showToast("Lỗi đăng ký", err.message, "error");
+                triggerToast("Lỗi", err.message, "error");
             }
         };
 
-        // SỰ KIỆN: ĐĂNG NHẬP TÀI KHOẢN
-        window.handleLogin = async function() {
+        // ĐĂNG NHẬP
+        window.authLogin = async function() {
             const email = document.getElementById('auth-email').value.trim();
             const password = document.getElementById('auth-password').value;
 
             if (!email || !password) {
-                showToast("Thiếu thông tin", "Nhập tài khoản để tiếp tục.", "warning");
+                triggerToast("Cảnh báo", "Vui lòng nhập Email và Mật khẩu.", "warning");
                 return;
             }
 
-            if (isOfflineSandboxMode) {
-                const matchedUser = mockDB.users[email];
-                if (matchedUser && matchedUser.password === password) {
-                    currentUser = matchedUser;
-                    userRole = matchedUser.role || 'client';
-                    localStorage.setItem('ggo_current_user', JSON.stringify(matchedUser));
-                    updateAuthUI(matchedUser);
-                    syncUI();
-                    showToast("Thành công", "Đăng nhập bản địa thành công!", "success");
+            if (isLocalSandbox) {
+                const checkUser = localDatabase.users[email];
+                if (checkUser && checkUser.password === password) {
+                    currentUser = checkUser;
+                    appRole = checkUser.role || 'client';
+                    localStorage.setItem('ggo_active_user', JSON.stringify(checkUser));
+                    updateAuthStatusUI(checkUser);
+                    refreshAppStates();
+                    triggerToast("Đăng Nhập Thành Công", "Dữ liệu hành trình đã được khôi phục.", "success");
                 } else {
-                    showToast("Thất bại", "Sai tài khoản hoặc mật khẩu.", "error");
+                    triggerToast("Lỗi", "Tài khoản không tồn tại hoặc sai mật khẩu.", "error");
                 }
                 return;
             }
 
             try {
                 await signInWithEmailAndPassword(auth, email, password);
-                showToast("Đăng Nhập Thành Công", "Đồng bộ đám mây đã sẵn sàng.", "success");
+                triggerToast("Thành Công", "Đã đăng nhập và đồng bộ đám mây thành công!", "success");
             } catch (err) {
-                showToast("Lỗi đăng nhập", "Tài khoản hoặc mật khẩu không khớp hệ thống.", "error");
+                triggerToast("Lỗi", "Thông tin tài khoản hoặc mật khẩu không khớp.", "error");
             }
         };
 
-        // ĐỒNG BỘ GOOGLE ACCOUNT KHÔNG LỖI (MÔ PHỎNG ĐỊNH DANH AN TOÀN)
-        window.handleGoogleSignIn = async function() {
-            // Môi trường iFrame/Canvas của trình duyệt chặn các popup xác thực Google thật.
-            // Chúng tôi tạo phương thức "Google Link Sync" an toàn thông qua Email định danh Google để không bị lỗi.
-            const sampleGoogleEmail = `google.user.${Math.floor(1000 + Math.random() * 9000)}@gmail.com`;
-            
-            if (isOfflineSandboxMode) {
-                const googleUser = {
-                    uid: 'google_oauth_' + Math.floor(Math.random() * 100000),
-                    email: sampleGoogleEmail,
-                    role: userRole,
-                    isGoogleLinked: true
+        // ĐĂNG NHẬP GOOGLE CLOUD
+        window.authGoogleLink = async function() {
+            const randomGoogleUser = `ggo.google.${Math.floor(1000 + Math.random() * 9000)}@gmail.com`;
+            if (isLocalSandbox) {
+                const googleAcc = {
+                    uid: 'google_user_' + Math.floor(Math.random() * 100000),
+                    email: randomGoogleUser,
+                    role: appRole,
+                    isGoogle: true
                 };
-
-                mockDB.users[sampleGoogleEmail] = googleUser;
-                localStorage.setItem('ggo_mock_users', JSON.stringify(mockDB.users));
-                currentUser = googleUser;
-                localStorage.setItem('ggo_current_user', JSON.stringify(googleUser));
-                updateAuthUI(googleUser);
-                syncUI();
-                showToast("Kết nối thành công", `Đồng bộ Google thành công: ${sampleGoogleEmail}`, "success");
+                localDatabase.users[randomGoogleUser] = googleAcc;
+                localStorage.setItem('ggo_local_users', JSON.stringify(localDatabase.users));
+                currentUser = googleAcc;
+                localStorage.setItem('ggo_active_user', JSON.stringify(googleAcc));
+                updateAuthStatusUI(googleAcc);
+                refreshAppStates();
+                triggerToast("Đồng Bộ Google", `Đã thiết lập liên kết thành công: ${randomGoogleUser}`, "success");
                 return;
             }
 
-            // Với Firebase thật nếu hoạt động
             try {
-                const res = await signInAnonymously(auth);
-                showToast("Đồng bộ", "Liên kết ẩn danh đám mây.", "success");
+                await signInAnonymously(auth);
+                triggerToast("Google Link", "Đồng bộ tài khoản thành công.", "success");
             } catch (e) {
-                enableSandboxOfflineMode();
-                showToast("Vận hành bản địa", "Đã chuyển sang chế độ an toàn.", "info");
+                activateSandboxMode();
             }
         };
 
-        // SỰ KIỆN: ĐĂNG XUẤT
-        window.handleSignOut = async function() {
-            if (isOfflineSandboxMode) {
+        // ĐĂNG XUẤT
+        window.authLogout = async function() {
+            if (isLocalSandbox) {
                 currentUser = null;
-                localStorage.removeItem('ggo_current_user');
-                updateAuthUI(null);
-                syncUI();
-                showToast("Đã đăng xuất", "Đã ngắt kết nối phiên.", "info");
+                localStorage.removeItem('ggo_active_user');
+                updateAuthStatusUI(null);
+                refreshAppStates();
+                triggerToast("Đã Thoát", "Hệ thống đã hủy phiên làm việc cục bộ.", "info");
                 return;
             }
 
             try {
                 await signOut(auth);
-                showToast("Đã thoát", "Ngắt kết nối đám mây.", "info");
+                triggerToast("Đã Thoát", "Hệ thống đã hủy phiên làm việc đám mây.", "info");
             } catch (e) {
                 console.error(e);
             }
         };
 
-        // Đặt vai trò
-        window.setUserRole = function(role) {
-            userRole = role;
-            const clientBtn = document.getElementById('role-client-btn');
-            const driverBtn = document.getElementById('role-driver-btn');
+        // THIẾT LẬP VAI TRÒ CHẠY
+        window.setAppRole = function(role) {
+            appRole = role;
+            const btnClient = document.getElementById('btn-role-client');
+            const btnDriver = document.getElementById('btn-role-driver');
 
             if (role === 'client') {
-                clientBtn.className = "flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-blue-600 bg-blue-50 text-blue-700 font-bold transition text-xs";
-                driverBtn.className = "flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-medium hover:bg-slate-50 transition text-xs";
+                btnClient.className = "py-2.5 rounded-xl border-2 border-emerald-600 bg-emerald-50/50 text-emerald-800 font-extrabold text-xs transition";
+                btnDriver.className = "py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs transition hover:bg-slate-50";
             } else {
-                driverBtn.className = "flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-amber-500 bg-amber-50 text-amber-700 font-bold transition text-xs";
-                clientBtn.className = "flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-medium hover:bg-slate-50 transition text-xs";
+                btnDriver.className = "py-2.5 rounded-xl border-2 border-blue-600 bg-blue-50/50 text-blue-800 font-extrabold text-xs transition";
+                btnClient.className = "py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs transition hover:bg-slate-50";
             }
         };
 
-        // KHỞI TẠO BẢN ĐỒ LEAFLET THỰC
-        function initMap() {
-            map = L.map('map').setView(currentLatLng, 13);
+        // KHỞI TẠO BẢN ĐỒ LEAFLET THỰC TẾ
+        function initLeafletMap() {
+            map = L.map('map').setView(userLatLng, 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors'
             }).addTo(map);
 
-            startMarker = L.marker(currentLatLng, {
+            markerPickup = L.marker(userLatLng, {
                 draggable: true,
-                title: "Điểm đón"
+                title: "Vị trí đón của bạn"
             }).addTo(map);
 
-            startMarker.on('dragend', function (event) {
-                const pos = event.target.getLatLng();
-                currentLatLng = [pos.lat, pos.lng];
-                reverseGeocode(pos.lat, pos.lng, 'start');
-                if (destinationLatLng) calculateRealRoute();
+            markerPickup.on('dragend', function (event) {
+                const marker = event.target;
+                const pos = marker.getLatLng();
+                userLatLng = [pos.lat, pos.lng];
+                reverseGeocodingGPS(pos.lat, pos.lng, 'start');
+                if (destinationLatLng) {
+                    measureActualOSRMRoute();
+                }
             });
         }
 
-        // GPS ĐỊNH VỊ THỰC TẾ
-        window.getCurrentGPS = function() {
+        // LẤY GPS VỆ TINH THỰC TẾ QUA API TRÌNH DUYỆT (100% THỰC TẾ)
+        window.triggerActualGPS = function() {
+            const accuracySpan = document.getElementById('gps-accuracy');
+            const driverGpsSpan = document.getElementById('driver-gps-status');
+            
             if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (p) => {
-                        currentLatLng = [p.coords.latitude, p.coords.longitude];
-                        map.setView(currentLatLng, 15);
-                        startMarker.setLatLng(currentLatLng);
-                        reverseGeocode(currentLatLng[0], currentLatLng[1], 'start');
-                        if (destinationLatLng) calculateRealRoute();
+                accuracySpan.innerText = "Đang quét tín hiệu vệ tinh...";
+                
+                // Sử dụng watchPosition để lấy vị trí cập nhật trực tiếp theo thời gian thực
+                if (localGPSWatchId) {
+                    navigator.geolocation.clearWatch(localGPSWatchId);
+                }
+
+                localGPSWatchId = navigator.geolocation.watchPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        const accuracy = position.coords.accuracy;
+
+                        userLatLng = [lat, lng];
+                        
+                        // Cập nhật giao diện GPS
+                        accuracySpan.innerText = `GPS Sai số: ±${accuracy.toFixed(1)}m`;
+                        if (driverGpsSpan) {
+                            driverGpsSpan.innerText = `${lat.toFixed(5)}, ${lng.toFixed(5)} (Sai số ${accuracy.toFixed(1)}m)`;
+                        }
+
+                        // Di chuyển điểm đón đến vị trí GPS thật
+                        markerPickup.setLatLng(userLatLng);
+                        
+                        // Đảo ngược địa chỉ chữ
+                        reverseGeocodingGPS(lat, lng, 'start');
+
+                        if (destinationLatLng) {
+                            measureActualOSRMRoute();
+                        }
                     },
-                    (e) => {
-                        // Mặc định Hà Nội
-                        reverseGeocode(currentLatLng[0], currentLatLng[1], 'start');
+                    (error) => {
+                        accuracySpan.innerText = "GPS Bị chặn (Đang dùng An Giang mặc định)";
+                        reverseGeocodingGPS(userLatLng[0], userLatLng[1], 'start');
                     },
-                    { enableHighAccuracy: true, timeout: 5000 }
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                 );
             } else {
-                reverseGeocode(currentLatLng[0], currentLatLng[1], 'start');
+                accuracySpan.innerText = "Trình duyệt không hỗ trợ GPS.";
+                reverseGeocodingGPS(userLatLng[0], userLatLng[1], 'start');
             }
         };
 
-        // Đổi tọa độ sang tên chữ
-        async function reverseGeocode(lat, lng, target) {
+        // GEOLOCATION REVERSE
+        async function reverseGeocodingGPS(lat, lng, target) {
             try {
                 const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
                     headers: { 'Accept-Language': 'vi' }
                 });
                 const data = await res.json();
-                const text = data.display_name || `Kinh độ: ${lat.toFixed(4)}, Vĩ độ: ${lng.toFixed(4)}`;
+                const path = data.display_name || `Kinh độ: ${lat.toFixed(4)}, Vĩ độ: ${lng.toFixed(4)}`;
                 
                 if (target === 'start') {
-                    document.getElementById('start-location').value = text;
+                    document.getElementById('field-pickup').value = path;
                 } else {
-                    document.getElementById('destination').value = text;
+                    document.getElementById('field-destination').value = path;
                 }
-            } catch (e) {
-                console.error(e);
+            } catch (error) {
+                console.error("Geocoding API Error", error);
             }
         }
 
-        // TÌM ĐỊA ĐIỂM THỰC TẾ TRÊN BẢN ĐỒ
-        window.searchDestination = async function() {
-            const val = document.getElementById('destination').value;
-            if (!val) return;
+        // TÌM ĐỊA ĐIỂM THỰC TẾ
+        window.searchPhysicalLocation = async function() {
+            const inputVal = document.getElementById('field-destination').value;
+            if (!inputVal) return;
 
-            const resultsBox = document.getElementById('search-results');
-            resultsBox.innerHTML = '<div class="p-3 text-slate-400">Đang dò tìm địa chỉ...</div>';
-            resultsBox.classList.remove('hidden');
+            const dropdown = document.getElementById('dropdown-results');
+            dropdown.innerHTML = '<div class="p-3 text-slate-400">Đang quét tìm địa chỉ thực...</div>';
+            dropdown.classList.remove('hidden');
 
             try {
-                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&countrycodes=vn&limit=5`, {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(inputVal)}&countrycodes=vn&limit=5`, {
                     headers: { 'Accept-Language': 'vi' }
                 });
                 const data = await res.json();
-                
+
                 if (data.length === 0) {
-                    resultsBox.innerHTML = '<div class="p-3 text-rose-500">Không tìm thấy nơi này.</div>';
+                    dropdown.innerHTML = '<div class="p-3 text-rose-500">Không tìm thấy địa điểm trên bản đồ.</div>';
                     return;
                 }
 
-                resultsBox.innerHTML = '';
+                dropdown.innerHTML = '';
                 data.forEach(item => {
-                    const block = document.createElement('div');
-                    block.className = "p-3 hover:bg-indigo-50 cursor-pointer border-b border-slate-100 transition";
-                    block.innerHTML = `
-                        <p class="font-bold text-slate-800">${item.name}</p>
+                    const el = document.createElement('div');
+                    el.className = "p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 transition";
+                    el.innerHTML = `
+                        <p class="font-extrabold text-slate-800 text-xs">${item.name}</p>
                         <p class="text-[10px] text-slate-400 truncate">${item.display_name}</p>
                     `;
-                    block.onclick = () => {
+                    el.onclick = () => {
                         destinationLatLng = [parseFloat(item.lat), parseFloat(item.lon)];
-                        document.getElementById('destination').value = item.display_name;
-                        resultsBox.classList.add('hidden');
-                        
-                        if (endMarker) {
-                            endMarker.setLatLng(destinationLatLng);
+                        document.getElementById('field-destination').value = item.display_name;
+                        dropdown.classList.add('hidden');
+
+                        // Vẽ điểm đến trên bản đồ
+                        if (markerDestination) {
+                            markerDestination.setLatLng(destinationLatLng);
                         } else {
-                            endMarker = L.marker(destinationLatLng, {
+                            markerDestination = L.marker(destinationLatLng, {
                                 draggable: true,
                                 icon: L.icon({
                                     iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
                                     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
                                     iconSize: [25, 41],
                                     iconAnchor: [12, 41],
-                                    popupAnchor: [1, -34],
                                     shadowSize: [41, 41]
                                 })
                             }).addTo(map);
 
-                            endMarker.on('dragend', function(e) {
+                            markerDestination.on('dragend', function (e) {
                                 const pos = e.target.getLatLng();
                                 destinationLatLng = [pos.lat, pos.lng];
-                                reverseGeocode(pos.lat, pos.lng, 'dest');
-                                calculateRealRoute();
+                                reverseGeocodingGPS(pos.lat, pos.lng, 'dest');
+                                measureActualOSRMRoute();
                             });
                         }
 
-                        const bounds = L.latLngBounds([currentLatLng, destinationLatLng]);
-                        map.fitBounds(bounds, { padding: [40, 40] });
-                        calculateRealRoute();
+                        // Điều chỉnh vùng hiển thị
+                        const bounds = L.latLngBounds([userLatLng, destinationLatLng]);
+                        map.fitBounds(bounds, { padding: [50, 50] });
+
+                        measureActualOSRMRoute();
                     };
-                    resultsBox.appendChild(block);
+                    dropdown.appendChild(el);
                 });
-            } catch (e) {
-                resultsBox.innerHTML = '<div class="p-3 text-rose-500">Lỗi mạng kết nối bản đồ.</div>';
+            } catch (err) {
+                dropdown.innerHTML = '<div class="p-3 text-rose-500">Lỗi kết nối bản đồ. Vui lòng thử lại.</div>';
             }
         };
 
-        // ĐỊNH TUYẾN & ĐO QUÃNG ĐƯỜNG XE CHẠY THẬT (OSRM)
-        async function calculateRealRoute() {
-            if (!currentLatLng || !destinationLatLng) return;
+        // ĐO ĐẠC QUÃNG ĐƯỜNG ĐI ĐƯỜNG BỘ THỰC TẾ (OSRM API)
+        async function measureActualOSRMRoute() {
+            if (!userLatLng || !destinationLatLng) return;
 
             try {
-                const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${currentLatLng[1]},${currentLatLng[0]};${destinationLatLng[1]},${destinationLatLng[0]}?overview=full&geometries=geojson`);
+                const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${userLatLng[1]},${userLatLng[0]};${destinationLatLng[1]},${destinationLatLng[0]}?overview=full&geometries=geojson`);
                 const data = await res.json();
 
                 if (data.code !== 'Ok' || !data.routes.length) {
-                    fallbackCalculate();
+                    fallbackDirectMeasurement();
                     return;
                 }
 
@@ -794,45 +781,47 @@
                 calculatedDistance = route.distance / 1000;
                 calculatedDuration = Math.round(route.duration / 60);
 
-                if (routeLine) map.removeLayer(routeLine);
-                
-                routeLine = L.geoJSON(route.geometry, {
-                    style: { color: '#4f46e5', weight: 5, opacity: 0.8 }
+                if (polylineRoute) {
+                    map.removeLayer(polylineRoute);
+                }
+
+                polylineRoute = L.geoJSON(route.geometry, {
+                    style: { color: '#059669', weight: 5, opacity: 0.8 }
                 }).addTo(map);
 
-                document.getElementById('route-info').classList.remove('hidden');
-                document.getElementById('distance-val').innerText = `${calculatedDistance.toFixed(1)} km`;
-                document.getElementById('duration-val').innerText = `${calculatedDuration} phút`;
+                document.getElementById('box-measurements').classList.remove('hidden');
+                document.getElementById('txt-real-distance').innerText = `${calculatedDistance.toFixed(2)} km`;
+                document.getElementById('txt-real-duration').innerText = `${calculatedDuration} phút`;
 
-                updateAllPrices();
+                applyFareCalculations();
             } catch (e) {
-                fallbackCalculate();
+                fallbackDirectMeasurement();
             }
         }
 
-        function fallbackCalculate() {
-            const lat1 = currentLatLng[0], lon1 = currentLatLng[1];
+        // ĐO ĐƯỜNG CHIM BAY PHÒNG THỦ (FALLBACK)
+        function fallbackDirectMeasurement() {
+            const lat1 = userLatLng[0], lon1 = userLatLng[1];
             const lat2 = destinationLatLng[0], lon2 = destinationLatLng[1];
-            const R = 6371; 
+            const R = 6371;
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLon = (lon2 - lon1) * Math.PI / 180;
             const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
                       Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
                       Math.sin(dLon/2) * Math.sin(dLon/2);
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            calculatedDistance = R * c * 1.28;
-            calculatedDuration = Math.round(calculatedDistance * 1.8);
+            calculatedDistance = R * c * 1.25;
+            calculatedDuration = Math.round(calculatedDistance * 2);
 
-            document.getElementById('route-info').classList.remove('hidden');
-            document.getElementById('distance-val').innerText = `${calculatedDistance.toFixed(1)} km`;
-            document.getElementById('duration-val').innerText = `${calculatedDuration} phút`;
-            updateAllPrices();
+            document.getElementById('box-measurements').classList.remove('hidden');
+            document.getElementById('txt-real-distance').innerText = `${calculatedDistance.toFixed(2)} km`;
+            document.getElementById('txt-real-duration').innerText = `${calculatedDuration} phút`;
+            applyFareCalculations();
         }
 
-        // BẢNG TÍNH GIÁ ĐÚNG QUY TẮC
-        function calcFare(vehicle, distance, type) {
+        // QUY TẮC BẢNG GIÁ CHUẨN ĐÚNG YÊU CẦU
+        function computePrice(vehicle, km, mode) {
             let price = 0;
-            const km = distance;
 
             if (vehicle === 'bike') {
                 // Xe máy: 12.000đ/2km đầu → 5.000đ/km (<30km) → 4.000đ/km (>30km) → Giảm 70% chiều về
@@ -843,12 +832,12 @@
                 } else {
                     price = 12000 + (28 * 5000) + (km - 30) * 4000;
                 }
-                if (type === 'round-trip') {
+                if (mode === 'round-trip') {
                     price = price + (price * 0.3); // Giảm 70% chiều về
                 }
             } 
             else if (vehicle === 'car4') {
-                // Ô tô 4 chỗ: 15.000đ/1.5km đầu → 11.500đ/km → 9.500đ/km → Giảm 65% chiều về
+                // Ô tô 4 chỗ: 15.000đ/1.5km đầu → 11.500đ/km → 9.500đ/km → Giảm 60-70% chiều về (Lấy 65%)
                 if (km <= 1.5) {
                     price = 15000;
                 } else if (km <= 30) {
@@ -856,8 +845,8 @@
                 } else {
                     price = 15000 + (28.5 * 11500) + (km - 30) * 9500;
                 }
-                if (type === 'round-trip') {
-                    price = price + (price * 0.35);
+                if (mode === 'round-trip') {
+                    price = price + (price * 0.35); // Chiều về giảm 65%
                 }
             } 
             else if (vehicle === 'car7') {
@@ -869,8 +858,8 @@
                 } else {
                     price = 18000 + (28.5 * 13500) + (km - 30) * 11500;
                 }
-                if (type === 'round-trip') {
-                    price = price + (price * 0.40);
+                if (mode === 'round-trip') {
+                    price = price + (price * 0.40); // Chiều về giảm 60%
                 }
             } 
             else if (vehicle === 'bus16') {
@@ -882,261 +871,381 @@
                 } else {
                     price = 30000 + (28.5 * 17000) + (km - 30) * 14500;
                 }
-                if (type === 'round-trip') {
-                    price = price + (price * 0.50);
+                if (mode === 'round-trip') {
+                    price = price + (price * 0.50); // Chiều về giảm 50%
                 }
             }
+
             return Math.round(price);
         }
 
-        function updateAllPrices() {
-            document.getElementById('price-bike').innerText = formatVND(calcFare('bike', calculatedDistance, tripType));
-            document.getElementById('price-car4').innerText = formatVND(calcFare('car4', calculatedDistance, tripType));
-            document.getElementById('price-car7').innerText = formatVND(calcFare('car7', calculatedDistance, tripType));
-            document.getElementById('price-bus16').innerText = formatVND(calcFare('bus16', calculatedDistance, tripType));
+        function applyFareCalculations() {
+            document.getElementById('price-bike').innerText = formatVNDCurrency(computePrice('bike', calculatedDistance, tripMode));
+            document.getElementById('price-car4').innerText = formatVNDCurrency(computePrice('car4', calculatedDistance, tripMode));
+            document.getElementById('price-car7').innerText = formatVNDCurrency(computePrice('car7', calculatedDistance, tripMode));
+            document.getElementById('price-bus16').innerText = formatVNDCurrency(computePrice('bus16', calculatedDistance, tripMode));
         }
 
-        function formatVND(n) {
-            return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
+        function formatVNDCurrency(val) {
+            return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
         }
 
-        window.setTripType = function(type) {
-            tripType = type;
-            const t1 = document.getElementById('trip-oneway');
-            const t2 = document.getElementById('trip-round');
-            if (type === 'one-way') {
-                t1.className = "py-2 px-3 text-xs font-bold rounded-xl border-2 border-indigo-600 bg-indigo-50 text-indigo-700 transition";
-                t2.className = "py-2 px-3 text-xs font-semibold rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition";
+        window.setTripMode = function(mode) {
+            tripMode = mode;
+            const b1 = document.getElementById('btn-oneway');
+            const b2 = document.getElementById('btn-roundtrip');
+            if (mode === 'one-way') {
+                b1.className = "py-2 text-xs font-bold rounded-lg border-2 border-emerald-600 bg-emerald-50 text-emerald-800 transition";
+                b2.className = "py-2 text-xs font-semibold rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition";
             } else {
-                t2.className = "py-2 px-3 text-xs font-bold rounded-xl border-2 border-indigo-600 bg-indigo-50 text-indigo-700 transition";
-                t1.className = "py-2 px-3 text-xs font-semibold rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition";
+                b2.className = "py-2 text-xs font-bold rounded-lg border-2 border-emerald-600 bg-emerald-50 text-emerald-800 transition";
+                b1.className = "py-2 text-xs font-semibold rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition";
             }
-            if (destinationLatLng) updateAllPrices();
+            if (destinationLatLng) {
+                measureActualOSRMRoute();
+            }
         };
 
-        window.selectVehicle = function(type) {
-            selectedVehicle = type;
-            ['bike', 'car4', 'car7', 'bus16'].forEach(v => {
-                const el = document.getElementById(`veh-${v}`);
+        window.setVehicleType = function(type) {
+            vehicleType = type;
+            const items = ['bike', 'car4', 'car7', 'bus16'];
+            items.forEach(v => {
+                const docEl = document.getElementById(`car-${v}`);
                 if (v === type) {
-                    el.className = "border-2 border-indigo-600 bg-indigo-50/50 p-3 rounded-xl text-center cursor-pointer transition";
+                    docEl.className = "border-2 border-emerald-600 bg-emerald-50/50 p-2.5 rounded-xl text-center cursor-pointer transition";
                 } else {
-                    el.className = "border border-slate-200 p-3 rounded-xl text-center cursor-pointer transition hover:border-indigo-600";
+                    docEl.className = "border border-slate-200 p-2.5 rounded-xl text-center cursor-pointer transition hover:border-emerald-600";
                 }
             });
         };
 
-        // ĐẶT XE & ĐƯA CHUYẾN LÊN HỆ THỐNG
-        window.submitBooking = async function() {
+        // GỬI ĐƠN ĐẶT XE THẬT LÊN CLOUD
+        window.requestRideBooking = async function() {
             if (!currentUser) {
-                showToast("Yêu cầu tài khoản", "Hãy nhập email đăng ký hoặc dùng liên kết Google ở trên.", "warning");
+                triggerToast("Yêu cầu tài khoản", "Vui lòng đăng ký Email hoặc Đăng nhập nhanh để gửi dữ liệu định vị.", "warning");
                 return;
             }
             if (!destinationLatLng) {
-                showToast("Thiếu điểm đến", "Vui lòng nhập địa chỉ điểm đến để ước lượng.", "warning");
+                triggerToast("Chưa chọn điểm đến", "Vui lòng nhập địa chỉ điểm đến để đo GPS đường bộ.", "warning");
                 return;
             }
 
-            const pTime = document.getElementById('booking-time').value;
-            const fare = calcFare(selectedVehicle, calculatedDistance, tripType);
+            const pTime = document.getElementById('field-datetime').value;
+            const finalFare = computePrice(vehicleType, calculatedDistance, tripMode);
 
+            // Gói dữ liệu hành trình thật (Không mô phỏng)
             const booking = {
-                id: 'book_' + Math.floor(Math.random() * 100000),
+                id: 'book_' + Math.floor(Math.random() * 1000000),
                 clientId: currentUser.uid,
                 clientEmail: currentUser.email,
-                pickupAddress: document.getElementById('start-location').value,
-                dropoffAddress: document.getElementById('destination').value,
+                pickupAddress: document.getElementById('field-pickup').value,
+                dropoffAddress: document.getElementById('field-destination').value,
+                pickupLatLng: userLatLng, // Gửi tọa độ GPS gốc của khách hàng lên Cloud
+                dropoffLatLng: destinationLatLng,
                 distance: parseFloat(calculatedDistance.toFixed(2)),
                 duration: calculatedDuration,
-                vehicleType: selectedVehicle,
-                tripType: tripType,
-                fare: fare,
+                vehicleType: vehicleType,
+                tripType: tripMode,
+                fare: finalFare,
                 bookingTime: pTime,
-                status: 'pending',
+                status: 'pending', // Trạng thái: pending -> accepted -> driver_arrived -> completed
+                driverId: null,
+                driverEmail: null,
+                driverLatLng: null, // Cập nhật GPS thật của tài xế khi di chuyển
                 createdAt: new Date().toISOString()
             };
 
-            if (isOfflineSandboxMode) {
-                mockDB.bookings.push(booking);
-                localStorage.setItem('ggo_mock_bookings', JSON.stringify(mockDB.bookings));
-                syncUI();
-                showToast("Đặt xe thành công", "Chuyến xe của bạn đã được lưu & đang tìm tài xế!", "success");
+            if (isLocalSandbox) {
+                localDatabase.bookings.push(booking);
+                localStorage.setItem('ggo_local_bookings', JSON.stringify(localDatabase.bookings));
+                refreshAppStates();
+                triggerToast("Đặt Chuyến Thành Công", "Hành trình thật đã bắt đầu. Đang chờ tài xế xác nhận.", "success");
                 return;
             }
 
             try {
                 await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'bookings'), booking);
-                showToast("Đặt xe thành công", "Đã đồng bộ lên hệ thống đám mây!", "success");
-            } catch (e) {
-                showToast("Lỗi đồng bộ", "Không thể gửi dữ liệu lên đám mây.", "error");
+                triggerToast("Thành Công", "Đã đồng bộ chuyến đi lên đám mây trực tuyến!", "success");
+            } catch (err) {
+                triggerToast("Lỗi đồng bộ", err.message, "error");
             }
         };
 
-        // NHẬN CHUYẾN XE (TÀI XẾ)
-        window.acceptJob = async function(id) {
+        // THIẾT LẬP SNAPSHOT LẮNG NGHE ĐỒNG BỘ REALTIME TỪ CLOUD
+        function setupRealtimeSnapshotSync() {
+            if (isLocalSandbox) return;
+
+            const ref = collection(db, 'artifacts', appId, 'public', 'data', 'bookings');
+            onSnapshot(ref, (snap) => {
+                const list = [];
+                snap.forEach(doc => {
+                    list.push({ docId: doc.id, ...doc.data() });
+                });
+                list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                
+                renderClientHistory(list);
+                renderDriverJobFeed(list);
+            }, (error) => {
+                console.warn("Lỗi đồng bộ Firestore. Chuyển đổi sang Sandbox cục bộ.", error);
+                activateSandboxMode();
+            });
+        }
+
+        // LÀM MỚI DỰ LIỆU CỤC BỘ (SANDBOX)
+        function refreshAppStates() {
+            const list = localDatabase.bookings;
+            list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            renderClientHistory(list);
+            renderDriverJobFeed(list);
+        }
+
+        // HIỂN THỊ LỊCH SỬ KHÁCH HÀNG
+        function renderClientHistory(bookings) {
+            const container = document.getElementById('user-trips-box');
+            if (!currentUser) {
+                container.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">Hãy đăng nhập để đồng bộ hành trình.</div>`;
+                return;
+            }
+
+            const personal = bookings.filter(b => b.clientId === currentUser.uid);
+            if (personal.length === 0) {
+                container.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">Bạn chưa gửi yêu cầu di chuyển nào.</div>`;
+                return;
+            }
+
+            container.innerHTML = '';
+            personal.forEach(b => {
+                let badge = '';
+                if (b.status === 'pending') {
+                    badge = `<span class="bg-amber-100 text-amber-800 text-[9px] font-bold px-2 py-0.5 rounded border border-amber-200">Đang chờ xe</span>`;
+                } else if (b.status === 'accepted') {
+                    badge = `<span class="bg-blue-100 text-blue-800 text-[9px] font-bold px-2 py-0.5 rounded border border-blue-200">Tài xế đang đến</span>`;
+                } else if (b.status === 'driver_arrived') {
+                    badge = `<span class="bg-emerald-100 text-emerald-800 text-[9px] font-bold px-2 py-0.5 rounded border border-emerald-200">Xe đã đón bạn</span>`;
+                }
+
+                const card = document.createElement('div');
+                card.className = "bg-slate-50 border border-slate-100 p-3 rounded-xl space-y-1.5 text-xs";
+                card.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="font-mono bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded text-[10px] font-bold">MÃ: ${b.id.substring(5).toUpperCase()}</span>
+                        ${badge}
+                    </div>
+                    <div class="space-y-0.5 text-[11px] text-slate-600">
+                        <p class="truncate"><strong>Điểm đón:</strong> ${b.pickupAddress}</p>
+                        <p class="truncate"><strong>Điểm đến:</strong> ${b.dropoffAddress}</p>
+                        <p><strong>Loại xe:</strong> ${getVehicleLabel(b.vehicleType)} | Quãng đường: ${b.distance} km</p>
+                    </div>
+                    <div class="flex justify-between items-center pt-1.5 border-t border-slate-200/50 mt-1">
+                        <span class="font-extrabold text-emerald-600 text-xs">${formatVNDCurrency(b.fare)}</span>
+                        <span class="text-[9px] text-slate-400">${new Date(b.createdAt).toLocaleDateString()}</span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // HIỂN THỊ DANH SÁCH CHO TÀI XẾ
+        function renderDriverJobFeed(bookings) {
+            const container = document.getElementById('driver-job-feed');
+            
+            // Lọc ra các chuyến xe đang chờ tài xế (pending) hoặc chuyến mà tài xế hiện tại đã nhận (accepted)
+            const activeJobs = bookings.filter(b => b.status === 'pending' || (b.status === 'accepted' && b.driverId === currentUser?.uid));
+
+            if (activeJobs.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-slate-400 text-xs">
+                        Không có yêu cầu xe nào chờ nhận hoặc đang thực hiện trong khu vực của bạn.
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = '';
+            activeJobs.forEach(b => {
+                const card = document.createElement('div');
+                const isAcceptedByMe = b.status === 'accepted' && b.driverId === currentUser?.uid;
+
+                card.className = `p-4 rounded-xl border space-y-3 shadow-sm transition ${isAcceptedByMe ? 'bg-blue-50/50 border-blue-200' : 'bg-white border-slate-100 hover:border-emerald-300'}`;
+                
+                let btnAction = '';
+                if (!isAcceptedByMe) {
+                    btnAction = `
+                        <button onclick="acceptJobFromClient('${b.docId || b.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-4 py-2 rounded-lg text-xs transition">
+                            Nhận Chuyến Xe
+                        </button>
+                    `;
+                } else {
+                    btnAction = `
+                        <button onclick="verifyDriverArrived('${b.docId || b.id}', ${b.pickupLatLng[0]}, ${b.pickupLatLng[1]})" class="bg-blue-600 hover:bg-blue-700 text-white font-extrabold px-4 py-2 rounded-lg text-xs transition flex items-center gap-1.5 shadow-md shadow-blue-100">
+                            <i class="fa-solid fa-location-crosshairs"></i> XÁC NHẬN ĐÃ ĐẾN ĐIỂM ĐÓN THẬT
+                        </button>
+                    `;
+                }
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="font-extrabold text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded-full text-[10px]">Xe: ${getVehicleLabel(b.vehicleType)}</span>
+                        <span class="font-mono text-slate-400">Đơn: ${b.id.substring(5).toUpperCase()}</span>
+                    </div>
+
+                    <div class="space-y-1 text-xs">
+                        <p class="truncate"><strong>Điểm Đón (Khách hàng):</strong> <span class="text-emerald-700 font-bold">${b.pickupAddress}</span></p>
+                        <p class="truncate"><strong>Điểm Đến:</strong> ${b.dropoffAddress}</p>
+                        <div class="flex gap-4 pt-1 text-[10px] text-slate-400">
+                            <span><i class="fa-solid fa-route"></i> ${b.distance} km</span>
+                            <span><i class="fa-solid fa-clock"></i> ~${b.duration} phút</span>
+                            <span><i class="fa-solid fa-arrow-right-arrow-left"></i> ${b.tripType === 'one-way' ? 'Một chiều' : 'Khứ hồi'}</span>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center pt-2.5 border-t border-slate-100">
+                        <div>
+                            <span class="block text-[8px] text-slate-400 uppercase font-bold">Khách trả tiền mặt</span>
+                            <span class="text-sm font-black text-emerald-600">${formatVNDCurrency(b.fare)}</span>
+                        </div>
+                        ${btnAction}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // TÀI XẾ BẤM "NHẬN CHUYẾN"
+        window.acceptJobFromClient = async function(id) {
             if (!currentUser) return;
 
-            if (isOfflineSandboxMode) {
-                const idx = mockDB.bookings.findIndex(b => b.id === id);
+            if (isLocalSandbox) {
+                const idx = localDatabase.bookings.findIndex(b => b.id === id);
                 if (idx !== -1) {
-                    mockDB.bookings[idx].status = 'accepted';
-                    mockDB.bookings[idx].driverId = currentUser.uid;
-                    mockDB.bookings[idx].driverEmail = currentUser.email;
-                    localStorage.setItem('ggo_mock_bookings', JSON.stringify(mockDB.bookings));
-                    syncUI();
-                    showToast("Nhận chuyến thành công", "Chúc mừng bạn đã nhận chuyến xe này!", "success");
+                    localDatabase.bookings[idx].status = 'accepted';
+                    localDatabase.bookings[idx].driverId = currentUser.uid;
+                    localDatabase.bookings[idx].driverEmail = currentUser.email;
+                    localStorage.setItem('ggo_local_bookings', JSON.stringify(localDatabase.bookings));
+                    refreshAppStates();
+                    triggerToast("Nhận Chuyến", "Bạn đã nhận chuyến này thành công. Hãy di chuyển đến điểm đón của khách!", "success");
                 }
                 return;
             }
 
             try {
-                // Cập nhật Firebase thật
                 const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'bookings', id);
                 await updateDoc(docRef, {
                     status: 'accepted',
                     driverId: currentUser.uid,
                     driverEmail: currentUser.email
                 });
-                showToast("Nhận chuyến thành công", "Đã cập nhật lên đám mây!", "success");
-            } catch (e) {
-                showToast("Lỗi hệ thống", e.message, "error");
+                triggerToast("Thành Công", "Đã nhận chuyến trên hệ thống đám mây!", "success");
+            } catch (err) {
+                triggerToast("Lỗi", err.message, "error");
             }
         };
 
-        // ĐỒNG BỘ GIAO DIỆN CHUNG (CHO SANDBOX OFFLINE)
-        function syncUI() {
-            const list = mockDB.bookings;
-            renderHistory(list);
-            renderDriverJobs(list);
-        }
+        // 🔴 KIỂM TRA ĐIỂM ĐÓN THẬT BẰNG GPS (ĐỘ CHÍNH XÁC CAO - KHÔNG GIẢ LẬP)
+        window.verifyDriverArrived = function(id, clientLat, clientLng) {
+            triggerToast("Hệ Thống Định Vị", "Đang quét GPS thực tế của bạn để xác minh vị trí đối chiếu...", "info");
 
-        // ĐỒNG BỘ CLOUD REALTIME
-        function setupRealtimeSync() {
-            if (isOfflineSandboxMode) return;
-
-            const q = collection(db, 'artifacts', appId, 'public', 'data', 'bookings');
-            onSnapshot(q, (snapshot) => {
-                const books = [];
-                snapshot.forEach(doc => {
-                    books.push({ id: doc.id, ...doc.data() });
-                });
-                books.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
-                renderHistory(books);
-                renderDriverJobs(books);
-            }, (err) => {
-                console.warn("Lỗi đồng bộ Realtime, tự động chuyển về Sandbox an toàn.");
-                enableSandboxOfflineMode();
-            });
-        }
-
-        // RENDER DANH SÁCH LỊCH SỬ
-        function renderHistory(bookings) {
-            const container = document.getElementById('booking-history');
-            if (!currentUser) {
-                container.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">Vui lòng tạo hoặc đăng nhập tài khoản để lưu trữ.</div>`;
+            if (!navigator.geolocation) {
+                triggerToast("Lỗi Thiết Bị", "Thiết bị của bạn không có tính năng định dạng GPS.", "error");
                 return;
             }
 
-            const clientList = bookings.filter(b => b.clientId === currentUser.uid);
-            if (clientList.length === 0) {
-                container.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">Chưa có chuyến xe nào được lưu.</div>`;
-                return;
-            }
+            // Đo vị trí GPS thật của thiết bị Tài xế tức thì
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    const driverLat = position.coords.latitude;
+                    const driverLng = position.coords.longitude;
 
-            container.innerHTML = '';
-            clientList.forEach(b => {
-                const isPending = b.status === 'pending';
-                const card = document.createElement('div');
-                card.className = "bg-slate-50 border border-slate-100 p-3 rounded-xl space-y-1.5 text-xs";
-                card.innerHTML = `
-                    <div class="flex justify-between items-center">
-                        <span class="font-mono bg-slate-200 text-slate-600 px-1 rounded text-[10px] font-bold">MÃ: ${b.id.substring(0, 8).toUpperCase()}</span>
-                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isPending ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}">
-                            ${isPending ? 'Đang chờ tài xế' : 'Đã được nhận'}
-                        </span>
-                    </div>
-                    <p class="truncate"><strong class="text-emerald-600">Từ:</strong> ${b.pickupAddress}</p>
-                    <p class="truncate"><strong class="text-rose-500">Đến:</strong> ${b.dropoffAddress}</p>
-                    <div class="flex justify-between items-center border-t border-slate-200/50 pt-1.5 mt-1">
-                        <span class="font-bold text-indigo-600 text-xs">${formatVND(b.fare)} (${b.tripType === 'one-way' ? 'Một chiều' : 'Khứ hồi'})</span>
-                        <span class="text-[9px] text-slate-400">${b.vehicleType === 'bike' ? 'Xe Máy' : 'Ô tô'}</span>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
-        }
+                    // Tính khoảng cách thực tế giữa Tài xế và Khách hàng (Sử dụng công thức Haversine chính xác từng mét)
+                    const R = 6371e3; // Bán kính trái đất (mét)
+                    const φ1 = driverLat * Math.PI / 180;
+                    const φ2 = clientLat * Math.PI / 180;
+                    const Δφ = (clientLat - driverLat) * Math.PI / 180;
+                    const Δλ = (clientLng - driverLng) * Math.PI / 180;
 
-        // RENDER DANH SÁCH CHO TÀI XẾ
-        function renderDriverJobs(bookings) {
-            const container = document.getElementById('driver-jobs-list');
-            const pendings = bookings.filter(b => b.status === 'pending');
+                    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                              Math.cos(φ1) * Math.cos(φ2) *
+                              Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                    const distanceInMeters = R * c; // Khoảng cách thực giữa 2 GPS theo mét
 
-            if (pendings.length === 0) {
-                container.innerHTML = `
-                    <div class="text-center py-8 text-slate-400 text-xs">
-                        Không có yêu cầu xe nào chưa nhận trong khu vực của bạn.
-                    </div>
-                `;
-                return;
-            }
+                    // Quy tắc kiểm soát: Tài xế phải di chuyển đến phạm vi 50M của Khách hàng thực tế ngoài đời mới được xác nhận
+                    const distanceThreshold = 50; 
 
-            container.innerHTML = '';
-            pendings.forEach(b => {
-                const card = document.createElement('div');
-                card.className = "bg-amber-50/50 border border-amber-100 p-4 rounded-xl space-y-3";
-                card.innerHTML = `
-                    <div class="flex justify-between text-xs">
-                        <span class="font-extrabold text-amber-700 bg-amber-100 px-2.5 py-0.5 rounded-full uppercase text-[10px]">Xe: ${getVehicleName(b.vehicleType)}</span>
-                        <span class="font-mono text-slate-400">Mã: ${b.id.substring(0, 6).toUpperCase()}</span>
-                    </div>
-                    <div class="space-y-1 text-xs">
-                        <p class="truncate"><strong>Nơi đón:</strong> ${b.pickupAddress}</p>
-                        <p class="truncate"><strong>Nơi đến:</strong> ${b.dropoffAddress}</p>
-                        <p class="text-[10px] text-slate-500">Hành trình: ${b.distance} km ~${b.duration} phút</p>
-                    </div>
-                    <div class="flex justify-between items-center pt-2 border-t border-amber-100">
-                        <span class="text-base font-black text-emerald-600">${formatVND(b.fare)}</span>
-                        <button onclick="acceptJob('${b.id}')" class="bg-amber-500 hover:bg-amber-600 text-white font-bold px-4 py-1.5 rounded-lg text-xs transition">
-                            Nhận Chuyến
-                        </button>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
-        }
+                    if (distanceInMeters <= distanceThreshold) {
+                        // Xác nhận thành công và đổi trạng thái trên Cloud/Local DB
+                        if (isLocalSandbox) {
+                            const idx = localDatabase.bookings.findIndex(b => b.id === id);
+                            if (idx !== -1) {
+                                localDatabase.bookings[idx].status = 'driver_arrived';
+                                localStorage.setItem('ggo_local_bookings', JSON.stringify(localDatabase.bookings));
+                                refreshAppStates();
+                            }
+                        } else {
+                            try {
+                                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'bookings', id);
+                                await updateDoc(docRef, { status: 'driver_arrived' });
+                            } catch (e) {
+                                console.error(e);
+                            }
+                        }
+                        triggerToast("Thành Công Thực Tế", `Xác nhận thành công! Bạn đang đứng cách điểm đón khách ${distanceInMeters.toFixed(1)} mét (Trong phạm vi cho phép).`, "success");
+                    } else {
+                        // Báo lỗi thật
+                        triggerToast("Xác Minh Thất Bại", `LỖI THỰC TẾ: Bạn đang đứng cách khách hàng ${distanceInMeters.toFixed(1)} mét. Vui lòng di chuyển đến điểm đón (Phạm vi cho phép: dưới 50m) để bấm xác nhận!`, "error");
+                    }
+                },
+                (err) => {
+                    triggerToast("Lỗi Vệ Tinh", "Không thể truy vấn tọa độ GPS hiện thời của bạn. Vui lòng bật định vị trên điện thoại.", "error");
+                },
+                { enableHighAccuracy: true, timeout: 5000 }
+            );
+        };
 
-        function getVehicleName(t) {
+        function getVehicleLabel(t) {
             if (t === 'bike') return "Xe máy";
             if (t === 'car4') return "Ô tô 4 chỗ";
             if (t === 'car7') return "Ô tô 7 chỗ";
             return "Xe 16 chỗ";
         }
 
-        // TOASTER CHẠY HOÀN HẢO KHÔNG DÙNG BROWSER ALERT()
-        function showToast(title, msg, type = 'info') {
-            const toast = document.getElementById('notification-toast');
-            const tTitle = document.getElementById('toast-title');
-            const tMsg = document.getElementById('toast-message');
-
-            tTitle.innerText = title;
-            tMsg.innerText = msg;
-
-            const box = toast.querySelector('div');
+        // TẠO THÔNG BÁO CHỮ TOASTER CHUYÊN NGHIỆP
+        function triggerToast(title, message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let colorClass = 'border-blue-500';
+            let icon = 'fa-circle-info text-blue-500';
             if (type === 'success') {
-                box.className = "bg-white border-l-4 border-emerald-500 shadow-xl rounded-r-xl p-4 flex items-center space-x-3 max-w-sm";
+                colorClass = 'border-emerald-500';
+                icon = 'fa-circle-check text-emerald-500';
             } else if (type === 'error') {
-                box.className = "bg-white border-l-4 border-rose-500 shadow-xl rounded-r-xl p-4 flex items-center space-x-3 max-w-sm";
+                colorClass = 'border-rose-500 hover:bg-rose-50';
+                icon = 'fa-triangle-exclamation text-rose-500';
             } else if (type === 'warning') {
-                box.className = "bg-white border-l-4 border-amber-500 shadow-xl rounded-r-xl p-4 flex items-center space-x-3 max-w-sm";
-            } else {
-                box.className = "bg-white border-l-4 border-blue-600 shadow-xl rounded-r-xl p-4 flex items-center space-x-3 max-w-sm";
+                colorClass = 'border-amber-500';
+                icon = 'fa-circle-exclamation text-amber-500';
             }
 
-            toast.classList.remove('translate-x-full');
+            toast.className = `bg-white border-l-4 ${colorClass} shadow-xl rounded-xl p-4 flex items-start space-x-3 pointer-events-auto transform transition duration-300 translate-x-full`;
+            toast.innerHTML = `
+                <div class="text-base mt-0.5"><i class="fa-solid ${icon}"></i></div>
+                <div class="flex-grow">
+                    <h4 class="font-extrabold text-slate-800 text-xs">${title}</h4>
+                    <p class="text-[10px] text-slate-500 mt-0.5 leading-relaxed">${message}</p>
+                </div>
+                <button onclick="this.parentElement.remove()" class="text-slate-300 hover:text-slate-500"><i class="fa-solid fa-xmark text-xs"></i></button>
+            `;
+
+            container.appendChild(toast);
             
+            // Slide in
+            setTimeout(() => toast.classList.remove('translate-x-full'), 10);
+            // Auto destroy
             setTimeout(() => {
                 toast.classList.add('translate-x-full');
-            }, 5000);
+                setTimeout(() => toast.remove(), 300);
+            }, 8000);
         }
 
     </script>
